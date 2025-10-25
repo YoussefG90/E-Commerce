@@ -6,11 +6,13 @@ import { ConfigModule } from '@nestjs/config';
 import { resolve } from 'path';
 import { MongooseModule } from '@nestjs/mongoose';
 import { UserModule } from './modules/user/user.module';
-import { SharedAuthenticationModule } from './common/modules/auth.module';
+import { BrandModule } from './modules/brand/brand.module';
+
 
 @Module({
   imports: [ConfigModule.forRoot({envFilePath:resolve("./config/.env.devolpment"),
-    isGlobal:true}),MongooseModule.forRoot(process.env.DB_URI as string),SharedAuthenticationModule,AuthenticationModule,UserModule],
+    isGlobal:true}),MongooseModule.forRoot(process.env.DB_URI as string),
+    AuthenticationModule,UserModule,BrandModule],
   controllers: [AppController],
   providers: [AppService],
 })

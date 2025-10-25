@@ -87,17 +87,25 @@ export abstract class DataBaseRepository<TRawDocument,TDocument=HydratedDocument
     }
 
     async findOneAndUpdate({
-        filter,update,options
+        filter,update,options={new:true}
     }: {
         filter: RootFilterQuery<TRawDocument>;
         update: UpdateQuery<TDocument>;
-        options?: MongooseUpdateQueryOptions<TDocument> | null;
+        options?: QueryOptions<TDocument> | null;
     }): Promise<TDocument | null> {
         return await this.model.findOneAndUpdate(
             filter,
             { ...update, $inc: { __v: 1 } },
             { new: true, ...options }
         )
+    }
+
+    async findOneAndDelete({
+        filter
+    }: {
+        filter: RootFilterQuery<TRawDocument>;
+    }): Promise<TDocument | null> {
+        return await this.model.findOneAndDelete(filter || {})
     }
 
   async create({

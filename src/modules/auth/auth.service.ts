@@ -1,8 +1,9 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import {OtpReposirotry, UserDocument, UserReposirotry } from "src/DB";
-import { ConfirmEmailDto, LoginDto, resendConfirmEmailDto, SignupBodyDto } from "./dto/auth.dto";
-import { compareHash, generateEncryption, LoginCredentialsResponse, OtpEnum, ProviderEnum} from "src/common";
+import { ConfirmEmailDto, ForgetPasswordDto, GmailDto, LoginDto, resendConfirmEmailDto, ResetPasswordDto, SignupBodyDto, VerifyResetCodeDto } from "./dto/auth.dto";
+import { compareHash, emailEvent, generateEncryption, generateHash, LoginCredentialsResponse, OtpEnum, ProviderEnum} from "src/common";
 import { Types } from "mongoose";
+import { OAuth2Client, TokenPayload } from 'google-auth-library';
 
 import { TokenService } from "src/common/Services";
 
@@ -17,6 +18,61 @@ export class AuthenticationService {
         private readonly otpReposirotry:OtpReposirotry,
         private readonly tokenService:TokenService
     ){}
+
+      private async verifyGmailAccount(idToken: string): Promise<TokenPayload> {
+    const client = new OAuth2Client();
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: process.env.WEB_CLIENT_ID?.split(',') || [],
+    });
+    const payload = ticket.getPayload();
+
+    if (!payload?.email_verified) {
+      throw new BadRequestException('Fail To Verify Google Account');
+    }
+
+    return payload;
+  }
+
+    async loginWithGmail({ idToken }: GmailDto): Promise<LoginCredentialsResponse> {
+    const { email } = await this.verifyGmailAccount(idToken);
+    const user = await this.userReposirotry.findOne({ filter: { email, provider: ProviderEnum.Google } });
+
+    if (!user) {
+      throw new NotFoundException('User Not Found Or Registered From Another Provider');
+    }
+    return await this.tokenService.CreateLoginCredentials(user as UserDocument)
+  }
+
+    async signupWithGmail({ idToken }: GmailDto): Promise<LoginCredentialsResponse> {
+    const { email, given_name, family_name } = await this.verifyGmailAccount(idToken);
+    const user = await this.userReposirotry.findOne({ filter: { email } });
+
+    if (user) {
+      if (user.provider === ProviderEnum.Google) {
+        return this.loginWithGmail({ idToken });
+      }
+      throw new ConflictException('Email Exists');
+    }
+
+    const [newUser] = await this.userReposirotry.create({
+      data: [
+        {
+          firstName: given_name,
+          lastName: family_name,
+          email,
+          provider: ProviderEnum.Google,
+        },
+      ],
+    });
+
+    if (!newUser) {
+      throw new BadRequestException('Fail To SignUp With Gmail. Please Try Again Later');
+    }
+
+    return await this.tokenService.CreateLoginCredentials(newUser as UserDocument)
+  }
+
 
     private async createConfirmEmailOtp(userId:Types.ObjectId){
         const generatedotp = generateotp()
@@ -102,6 +158,78 @@ export class AuthenticationService {
             }
             return await this.tokenService.CreateLoginCredentials(user as UserDocument)
         }
- 
+          async forgetPassword(data: ForgetPasswordDto): Promise<string> {
+    const { email } = data;
+    const user = await this.userReposirotry.findOne({
+      filter: { email, provider: ProviderEnum.System },
+    });
+
+    if (!user) {
+      throw new NotFoundException("User Not Found");
+    }
+
+    const otpCode = generateotp();
+
+    await this.otpReposirotry.create({
+      data: [
+        {
+          code: otpCode,
+          expiredAt: new Date(Date.now() + 5 * 60 * 1000), // صالح 5 دقايق
+          createdBy: user._id,
+          type: OtpEnum.ResetPassword,
+        },
+      ],
+    });
+    emailEvent.emit(OtpEnum.ResetPassword, { to: email, otp: otpCode });
+
+    return "Reset password code sent to your email.";
+  }
+
+  async verifyResetCode(data: VerifyResetCodeDto): Promise<string> {
+    const { email, code } = data;
+
+    const user = await this.userReposirotry.findOne({
+      filter: { email },
+      options: {
+        populate: [{ path: "otp", match: { type: OtpEnum.ResetPassword } }],
+      },
+    });
+
+    if (!user || !user.otp?.length) {
+      throw new BadRequestException("Invalid or expired code");
+    }
+
+    const otp = user.otp[0];
+    const isValid = otp.code === code && otp.expiredAt > new Date();
+
+    if (!isValid) {
+      throw new BadRequestException("Invalid or expired code");
+    }
+
+    return "Code verified successfully";
+  }
+
+  async resetPassword(data: ResetPasswordDto): Promise<string> {
+    const { email, newPassword } = data;
+
+    const user = await this.userReposirotry.findOne({
+      filter: { email },
+      options: {
+        populate: [{ path: "otp", match: { type: OtpEnum.ResetPassword } }],
+      },
+    });
+
+    if (!user || !user.otp?.length) {
+      throw new BadRequestException("Reset code not found or expired");
+    }
+    user.password = await generateHash(newPassword);
+    await user.save();
+    await this.otpReposirotry.deleteOne({
+      filter: { _id: user.otp[0]._id },
+    });
+
+    return "Password reset successfully";
+  }
+
 
 }

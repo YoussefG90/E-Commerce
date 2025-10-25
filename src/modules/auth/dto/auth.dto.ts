@@ -41,3 +41,29 @@ export class SignupBodyDto extends LoginDto{
     phone: string;
 }
 
+export class GmailDto {
+  @IsString()
+  @IsNotEmpty()
+  idToken: string;
+}
+
+export class ForgetPasswordDto {
+  @IsEmail()
+  email: string;
+}
+
+export class VerifyResetCodeDto {
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  code: string;
+}
+
+export class ResetPasswordDto {
+  @IsEmail()
+  email: string;
+
+  @IsStrongPassword()
+  newPassword: string;
+}
