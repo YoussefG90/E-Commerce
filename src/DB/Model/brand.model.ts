@@ -6,7 +6,7 @@ import {IBrand} from "src/common";
 
 
 
-@Schema({timestamps:true, strictQuery:true})
+@Schema({timestamps:true, strictQuery:true,toJSON:{virtuals:true},toObject:{virtuals:true}})
 export class Brand implements IBrand {
   @Prop({type:String ,required:true})
   image: string;

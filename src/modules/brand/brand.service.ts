@@ -1,7 +1,7 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateBrandDto } from './dto/create-brand.dto';
 import { BrandDocument, BrandReposirotry, UserDocument } from 'src/DB';
-import { FolderEmun, SuccessResponse, type IMulterFile } from 'src/common';
+import { FolderEnum, GetAllDto, SuccessResponse, type IMulterFile } from 'src/common';
 import { CloudinaryService } from 'src/common/utils/Multer';
 import { UpdateBrandDto } from './dto/update-brand.dto';
 import { Types } from 'mongoose';
@@ -19,7 +19,7 @@ export class BrandService {
     throw new ConflictException(existingBrand.freezedAt?"Already Archived Brand Exists with Same Name"
       :"Brand Already Exists");
   }
-  const result = await this.cloudinaryService.uploadFile(file, FolderEmun.Brand);
+  const result = await this.cloudinaryService.uploadFile(file, FolderEnum.Brand);
   const newBrand = await this.brandReposirotry.create({
     data: [
       {
@@ -50,14 +50,14 @@ export class BrandService {
 
   async updateAttachment(brandId:Types.ObjectId, file: IMulterFile , user:UserDocument
   ):Promise<BrandDocument | Lean<BrandDocument>> {
-    const result = await this.cloudinaryService.uploadFile(file, FolderEmun.Brand);
+    const result = await this.cloudinaryService.uploadFile(file, FolderEnum.Brand);
     const brand  = await this.brandReposirotry.findOneAndUpdate({filter:{_id:brandId},
       update:{image: result.secure_url,imagePublicId: result.public_id,updatedBy:user._id},
       options:{new:false}})
     if (!brand) {
+      await this.cloudinaryService.deleteFile(result.public_id)
       throw new NotFoundException("Fail to update brand")
     }
-    await this.cloudinaryService.deleteFile(result.public_id)
     return brand;
   }
   
@@ -98,13 +98,33 @@ export class BrandService {
   }
 
 
-  findAll() {
-    return `This action returns all brand`;
+  async findAll(data:GetAllDto, archive:boolean = false
+  ):Promise<{docsCount?:number; limit?:number; pages?:number;
+     currentPage?: number | undefined ;result:BrandDocument[] | Lean<BrandDocument>[]}> {
+    const {page , size , search} = data
+    const result = await this.brandReposirotry.paginate({
+      filter:{...(search?{$or:[
+        {name:{$regex:search,$options:"i"}},
+        {slug:{$regex:search,$options:"i"}},
+        {slogan:{$regex:search,$options:"i"}},
+      ]}:{}),...(archive?{paranoId:false,freezedAt:{$exists:true}}:{})},
+      page,
+      size
+    })
+    return result;
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} brand`;
+  async findOne(brandId:Types.ObjectId, archive:boolean = false
+  ):Promise<BrandDocument | Lean<BrandDocument>> {
+    const brand = await this.brandReposirotry.findOne({
+      filter:{_id:brandId,...(archive?{paranoId:false,freezedAt:{$exists:true}}:{})}
+    })
+    if (!brand) {
+      throw new NotFoundException("Fail To Find Brand")
+    }
+    return brand;
   }
+
 
 
 }

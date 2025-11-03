@@ -2,7 +2,7 @@ import { HydratedDocument ,Types} from "mongoose"
 import { MongooseModule, Prop, Schema, SchemaFactory, Virtual } from "@nestjs/mongoose";
 import { GenderEnum,  ProviderEnum, RoleEnum } from "src/common/enums";
 import { OtpDocument } from "./otp.model";
-import { generateHash } from "src/common";
+import { generateHash, IProduct } from "src/common";
 import { IUser } from "src/common/interfaces/user.interface";
 
 
@@ -52,6 +52,8 @@ export class User implements IUser {
   profileImage?: string;
   @Prop({ default: null })
   profileImagePublicId?: string;
+  @Prop({type:[{type:Types.ObjectId ,ref:'Produt'}]})
+  wishlist?: Types.ObjectId[]
 }
 
 export type UserDocument = HydratedDocument<User>

@@ -4,7 +4,7 @@ import { emailEvent, generateHash, OtpEnum } from "src/common";
 import { IOTP } from "src/common/interfaces/otp.interface";
 
 
-@Schema({timestamps:true})
+@Schema({timestamps:true, strictQuery:true,toJSON:{virtuals:true},toObject:{virtuals:true}})
 export class OTP implements IOTP {
     @Prop({type:String,required:true})
     code:string

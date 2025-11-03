@@ -1,8 +1,9 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { CreateBrandDto } from './create-brand.dto';
-import { IsMongoId } from "class-validator";
+import { IsMongoId} from "class-validator";
 import { Types } from "mongoose";
 import { ContainField } from 'src/common';
+
 
 
 @ContainField([])
@@ -15,3 +16,4 @@ export class BrandParamsDto {
     @IsMongoId()
     brandId:Types.ObjectId
 }
+

@@ -49,13 +49,20 @@ export class CloudinaryService {
     }
   }
 
-  async deleteByPrefix(prefix: string) {
-    try {
-      return await Cloudinary.api.delete_resources_by_prefix(
-        `${process.env.APP_NAME}/${prefix}`,
-      );
-    } catch (error) {
-      throw new InternalServerErrorException('Failed to delete by prefix');
-    }
+  async deleteByPrefix(prefix: string, resource_type: 'image' | 'video' | 'raw' = 'image') {
+  try {
+    const result = await Cloudinary.api.delete_resources_by_prefix(
+      `${process.env.APP_NAME}/${prefix}`,
+      { resource_type },
+    );
+
+    await Cloudinary.api.delete_folder(`${process.env.APP_NAME}/${prefix}`);
+
+    return result;
+  } catch (error) {
+    console.error('Cloudinary deleteByPrefix error:', error);
+    throw new InternalServerErrorException('Failed to delete by prefix');
   }
+}
+
 }

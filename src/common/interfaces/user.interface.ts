@@ -1,6 +1,7 @@
 import { Types } from "mongoose";
 import { OtpDocument } from "src/DB";
 import { GenderEnum, ProviderEnum, RoleEnum } from "../enums";
+import { IProduct } from "./product.interface";
 
 
 export interface IUser {
@@ -22,4 +23,5 @@ export interface IUser {
       profileImagePublicId?: string;
       createdAt?:Date;
       updatedAt?:Date;
+      wishlist?:Types.ObjectId[] | IProduct[]
 }

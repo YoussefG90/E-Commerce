@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { SuccessResponse } from "src/common";
+import { FolderEnum } from "src/common";
 import { CloudinaryService } from "src/common/utils/Multer";
-import { UserReposirotry } from "src/DB";
+import { UserDocument, UserReposirotry } from "src/DB";
 
 
 
@@ -14,8 +14,11 @@ export class UserService {
 
 
     
-    profile() {
-        return SuccessResponse();
+    async profile(user:UserDocument):Promise<UserDocument> {
+      const profile = await this.userReposirotry.findOne({
+        filter:{_id:user._id},options:{populate:[{path:"wishlist"}]} 
+      }) as UserDocument
+        return profile
     }
 
 
@@ -25,7 +28,7 @@ export class UserService {
     if (user.profileImagePublicId) {
       await this.cloudinaryService.deleteFile(user.profileImagePublicId);
     }
-    const result = await this.cloudinaryService.uploadFile(file, 'profile-images');
+    const result = await this.cloudinaryService.uploadFile(file, `${FolderEnum.User}/profile-image`);
     user.profileImage = result.secure_url;
     user.profileImagePublicId = result.public_id;
     await user.save();
