@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UsePipes, ValidationPipe, Req } from '@nestjs/common';
 import { OrderService } from './order.service';
-import { CreateOrderDto } from './dto/create-order.dto';
+import { CreateOrderDto, OrderParamDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { Auth, IResponse, RoleEnum, SuccessResponse, User } from 'src/common';
 import type { UserDocument } from 'src/DB';
 import { OrderResponse } from './entities/order.entity';
+import type { Request } from 'express';
 
 
 
@@ -21,9 +22,26 @@ export class OrderController {
     return SuccessResponse<OrderResponse>({status:201,data:{order}})
   }
 
-  @Get()
-  findAll() {
-    return this.orderService.findAll();
+  @Auth([RoleEnum.user])
+  @Post(":orderId")
+  async checkout(@User() user:UserDocument, @Param() params:OrderParamDto
+  ):Promise<IResponse> {
+    const session = await this.orderService.checkout(user, params.orderId);
+    return SuccessResponse({status:201,data:{session}})
+  }
+
+  @Auth([RoleEnum.admin , RoleEnum.superAdmin])
+  @Patch(":orderId")
+  async cancel(@User() user:UserDocument, @Param() params:OrderParamDto
+  ):Promise<IResponse<OrderResponse>> {
+    const order = await this.orderService.cancel(params.orderId,user);
+    return SuccessResponse<OrderResponse>({data:{order}})
+  }
+
+    @Post("webhook")
+  async webhook(@Req() req:Request) {
+    await this.orderService.webhook(req);
+    return SuccessResponse()
   }
 
   @Get(':id')

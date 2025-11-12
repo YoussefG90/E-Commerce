@@ -2,6 +2,11 @@ import { IsEnum, IsMongoId, IsNotEmpty, IsOptional, IsString, Matches } from "cl
 import { Types } from "mongoose";
 import { IOrder, PaymentEnum } from "src/common";
 
+export class OrderParamDto {
+    @IsMongoId()
+    orderId:Types.ObjectId
+}
+
 export class CreateOrderDto implements Partial<IOrder> {
     @IsString()
     @IsNotEmpty()

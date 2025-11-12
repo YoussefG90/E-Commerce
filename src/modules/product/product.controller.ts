@@ -1,18 +1,24 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ValidationPipe, UsePipes, UseInterceptors, UploadedFiles, ParseFilePipe, MaxFileSizeValidator, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ValidationPipe, UsePipes, UseInterceptors, UploadedFiles, ParseFilePipe, MaxFileSizeValidator, Query, Inject } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { ProductParamsDto, UpdateProductAttachmentDto, UpdateProductDto } from './dto/update-product.dto';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { cloudFileUpload, fileValidation } from 'src/common/utils/Multer';
-import { Auth, GetAllDto, GetAllResponse, IProduct, IResponse, RoleEnum, SuccessResponse, User } from 'src/common';
+import { Auth, GetAllDto, GetAllResponse, IProduct, IResponse, RoleEnum, SuccessResponse, TTL, User } from 'src/common';
 import type { UserDocument } from 'src/DB';
 import { ProductResponse } from './entities/product.entity';
+import type { RedisClientType } from 'redis';
+import { RedisCacheInterceptor } from 'src/common/redis.interceptor';
+import { Observable, of } from 'rxjs';
 
 
 @UsePipes(new ValidationPipe({whitelist:true,forbidNonWhitelisted:true}))
 @Controller('product')
 export class ProductController {
-  constructor(private readonly productService: ProductService) {}
+  constructor(private readonly productService: ProductService,@Inject('REDIS_CLIENT') private readonly redisClient: RedisClientType) {}
+
+
+
 
   @Auth([RoleEnum.superAdmin, RoleEnum.admin])
   @UseInterceptors(FilesInterceptor("attachments" ,5, cloudFileUpload({Validation:fileValidation.Image})))
@@ -76,11 +82,13 @@ export class ProductController {
      await this.productService.hardDelete(params.productId,user);
      return SuccessResponse()
    }
- 
+   
+   @TTL(20)
+   @UseInterceptors(RedisCacheInterceptor)
    @Get()
-   async findAll(@Query() query:GetAllDto):Promise<IResponse<GetAllResponse<IProduct>>> {
+   async findAll(@Query() query:GetAllDto):Promise<Observable<IResponse<GetAllResponse<IProduct>>>> {
      const result = await this.productService.findAll(query)
-     return SuccessResponse<GetAllResponse<IProduct>>({data:{result}})
+     return of(SuccessResponse<GetAllResponse<IProduct>>({data:{result}}))
    }
    @Auth([RoleEnum.superAdmin])
    @Get('/archive')

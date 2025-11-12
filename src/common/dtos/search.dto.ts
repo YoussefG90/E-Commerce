@@ -1,5 +1,6 @@
+import { Field, InputType } from "@nestjs/graphql"
 import { Type } from "class-transformer"
-import { IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString } from "class-validator"
+import { IsInt, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString } from "class-validator"
 
 export class GetAllDto {
     @Type(()=>Number)
@@ -16,4 +17,24 @@ export class GetAllDto {
     @IsNotEmpty()
     @IsOptional()
     search:string
+}
+
+@InputType()
+export class GetAllGraphDto {
+    @Field(() => Number,{nullable:true})
+    @IsOptional()
+    @IsInt()
+    @IsNumber()
+    @IsPositive()
+    page?:number
+    @Field(() => Number,{nullable:true})
+    @IsOptional()
+    @IsNumber()
+    @IsPositive()
+    size?:number
+    @Field(() => String,{nullable:true})
+    @IsString()
+    @IsNotEmpty()
+    @IsOptional()
+    search?:string
 }

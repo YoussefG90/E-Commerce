@@ -20,6 +20,8 @@ export class Order implements IOrder {
   @Prop({type:String,required:true })
   address: string;
   @Prop({type:String})
+  intentId: string
+  @Prop({type:String})
   cancelReason?: string 
   @Prop({type:Types.ObjectId ,ref:'Coupon'})
   coupon?: Types.ObjectId

@@ -17,6 +17,7 @@ export interface IOrderProduct {
 export interface IOrder {
         _id?:Types.ObjectId;
         address:string
+        intentId?:string
         phone:string
         note?:string
         cancelReason?:string
